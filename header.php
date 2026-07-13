@@ -4,9 +4,20 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+// Check if session is valid - if user_id is set but empty, destroy session
+if (isset($_SESSION['user_id']) && empty($_SESSION['user_id'])) {
+    session_destroy();
+    header("Location: index.php");
+    exit();
+}
+
 // Keep session alive if user is logged in
-if (isset($_SESSION['user_id'])) {
+if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
     $_SESSION['last_activity'] = time();
+} else {
+    // User is not logged in, clear any stale session data
+    unset($_SESSION['user_id']);
+    unset($_SESSION['username']);
 }
 
 // Get cart count from database
