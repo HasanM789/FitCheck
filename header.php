@@ -10,8 +10,6 @@ if (isset($_SESSION['user_id'])) {
 }
 
 // Get cart count from database
-// Note: $conn is NOT available here, so we need to include db_config
-// But only if it hasn't been included yet
 $total_items = 0;
 
 // Check if db_config has been included (check if $conn exists)
@@ -52,12 +50,12 @@ if (isset($conn) && isset($_SESSION['cart_session_id'])) {
         <a href="index.php" class="fc-nav-item">Home</a>
         <a href="catalog.php" class="fc-nav-item">Catalog</a>
         
-        <?php if (isset($_SESSION['user_id'])): ?>
+        <?php if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])): ?>
             <div class="fc-account-wrapper">
                 <a href="account.php" class="fc-nav-item">Account</a>
                 <div class="fc-account-dropdown">
                     <div class="fc-dropdown-user">
-                        <span class="dropdown-username"><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+                        <span class="dropdown-username"><?php echo htmlspecialchars($_SESSION['username'] ?? 'User'); ?></span>
                     </div>
                     <div class="fc-dropdown-divider"></div>
                     <a href="account.php" class="fc-dropdown-item">Dashboard</a>
