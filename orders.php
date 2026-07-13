@@ -11,14 +11,16 @@ include('header.php');
 $user_id = $_SESSION['user_id'];
 
 // Fetch all orders for the logged-in user with their total item counts
-$orders_result = $conn->query("
+$stmt = $conn->prepare("
     SELECT o.*, COUNT(oi.id) as item_count 
     FROM orders o
     LEFT JOIN order_items oi ON o.id = oi.order_id
-    WHERE o.user_id = $user_id
+    WHERE o.user_id = ?
     GROUP BY o.id
     ORDER BY o.order_date DESC
 ");
+$stmt->execute([$user_id]);
+$orders_result = $stmt;
 ?>
 
 <div class="account-container">
@@ -62,10 +64,9 @@ $orders_result = $conn->query("
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($orders_result && $orders_result->num_rows > 0): ?>
-                            <?php while($order = $orders_result->fetch_assoc()): ?>
+                        <?php if ($orders_result && $orders_result->rowCount() > 0): ?>
+                            <?php while($order = $orders_result->fetch()): ?>
                                 <tr>
-                                    <!-- Formats Order IDs to a clean 6-digit zero-padded format -->
                                     <td class="order-id">#<?php echo str_pad($order['id'], 6, '0', STR_PAD_LEFT); ?></td>
                                     <td><?php echo date('M d, Y — h:i A', strtotime($order['order_date'])); ?></td>
                                     <td class="order-total"><?php echo number_format($order['total_price'], 2); ?> BD</td>
@@ -76,7 +77,6 @@ $orders_result = $conn->query("
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <!-- Empty State View matching the global theme structure -->
                             <tr>
                                 <td colspan="5" class="empty-state">
                                     <div class="empty-state-content">

@@ -9,14 +9,17 @@ if (!isset($_SESSION['user_id'])) {
 include('header.php');
 
 $user_id = $_SESSION['user_id'];
-$user = $conn->query("SELECT * FROM users WHERE id = $user_id")->fetch_assoc();
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
 
 $success = "";
 
 // Handle Profile Updates
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
-    $email = $conn->real_escape_string($_POST['email']);
-    $conn->query("UPDATE users SET email = '$email' WHERE id = $user_id");
+    $email = $_POST['email'];
+    $stmt = $conn->prepare("UPDATE users SET email = ? WHERE id = ?");
+    $stmt->execute([$email, $user_id]);
     $success = "Profile updated successfully!";
     $user['email'] = $email;
 }

@@ -9,21 +9,27 @@ include('header.php');
 $user_id = $_SESSION['user_id'];
 
 // Get order count
-$order_count = $conn->query("SELECT COUNT(*) as count FROM orders WHERE user_id = $user_id")->fetch_assoc()['count'];
+$stmt = $conn->prepare("SELECT COUNT(*) as count FROM orders WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$order_count = $stmt->fetch()['count'];
 
 // Get total spent
-$total_spent = $conn->query("SELECT COALESCE(SUM(total_price), 0) as total FROM orders WHERE user_id = $user_id")->fetch_assoc()['total'];
+$stmt = $conn->prepare("SELECT COALESCE(SUM(total_price), 0) as total FROM orders WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$total_spent = $stmt->fetch()['total'];
 
 // Get recent orders
-$orders_result = $conn->query("
+$stmt = $conn->prepare("
     SELECT o.*, COUNT(oi.id) as item_count 
     FROM orders o
     LEFT JOIN order_items oi ON o.id = oi.order_id
-    WHERE o.user_id = $user_id
+    WHERE o.user_id = ?
     GROUP BY o.id
     ORDER BY o.order_date DESC
     LIMIT 5
 ");
+$stmt->execute([$user_id]);
+$orders_result = $stmt;
 ?>
 
 <div class="account-container">
@@ -94,8 +100,8 @@ $orders_result = $conn->query("
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($orders_result && $orders_result->num_rows > 0): ?>
-                            <?php while($order = $orders_result->fetch_assoc()): ?>
+                        <?php if ($orders_result && $orders_result->rowCount() > 0): ?>
+                            <?php while($order = $orders_result->fetch()): ?>
                                 <tr>
                                     <td class="order-id">#<?php echo str_pad($order['id'], 6, '0', STR_PAD_LEFT); ?></td>
                                     <td><?php echo date('M d, Y', strtotime($order['order_date'])); ?></td>

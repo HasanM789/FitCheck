@@ -5,8 +5,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_id'])) {
     $product_id = (int)$_POST['product_id'];
     
     // Verify product exists
-    $check = $conn->query("SELECT id FROM products WHERE id = $product_id");
-    if ($check->num_rows === 0) {
+    $stmt = $conn->prepare("SELECT id FROM products WHERE id = ?");
+    $stmt->execute([$product_id]);
+    if ($stmt->rowCount() === 0) {
         header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'catalog.php'));
         exit();
     }
@@ -27,3 +28,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_id'])) {
 // Redirect back to previous page
 header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'catalog.php'));
 exit();
+?>

@@ -22,7 +22,6 @@ if (isset($_POST['update_cart']) && isset($_POST['product_id']) && isset($_POST[
     $product_id = (int)$_POST['product_id'];
     $quantity = (int)$_POST['quantity'];
     
-    // Debug: log the values
     error_log("Updating product ID: $product_id, Quantity: $quantity");
     
     if ($quantity > 0) {
@@ -31,7 +30,6 @@ if (isset($_POST['update_cart']) && isset($_POST['product_id']) && isset($_POST[
         unset($_SESSION['cart'][$product_id]);
     }
     
-    // Debug: log the session cart
     error_log("Session cart: " . print_r($_SESSION['cart'], true));
     
     header("Location: cart.php");
@@ -79,12 +77,10 @@ if (!empty($_SESSION['cart'])) {
     $ids = array_keys($_SESSION['cart']);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-    $types = str_repeat('i', count($ids));
-    $stmt->bind_param($types, ...$ids);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt->execute($ids);
+    $result = $stmt;
     
-    while ($item = $result->fetch_assoc()) {
+    while ($item = $result->fetch()) {
         $item['quantity'] = $_SESSION['cart'][$item['id']];
         $item['subtotal'] = $item['price'] * $item['quantity'];
         $total += $item['subtotal'];

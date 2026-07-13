@@ -21,26 +21,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     $ids = array_keys($_SESSION['cart']);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-    $types = str_repeat('i', count($ids));
-    $stmt->bind_param($types, ...$ids);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt->execute($ids);
+    $result = $stmt;
     
     $cart_items = [];
-    while ($item = $result->fetch_assoc()) {
+    while ($item = $result->fetch()) {
         $item['quantity'] = $_SESSION['cart'][$item['id']];
         $item['subtotal'] = $item['price'] * $item['quantity'];
         $total += $item['subtotal'];
         $cart_items[] = $item;
     }
     
-    // Create order
-    $conn->begin_transaction();
+    // Create order - SQLite supports transactions
+    $conn->beginTransaction();
     try {
         $stmt = $conn->prepare("INSERT INTO orders (user_id, total_price) VALUES (?, ?)");
-        $stmt->bind_param("id", $user_id, $total);
-        $stmt->execute();
-        $order_id = $conn->insert_id;
+        $stmt->execute([$user_id, $total]);
+        $order_id = $conn->lastInsertId();
         
         // Add order items with default size/color
         $stmt = $conn->prepare("INSERT INTO order_items (order_id, product_id, quantity, selected_size, selected_color) VALUES (?, ?, ?, ?, ?)");
@@ -48,8 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
         $default_color = 'Black';
         
         foreach ($cart_items as $item) {
-            $stmt->bind_param("iiiss", $order_id, $item['id'], $item['quantity'], $default_size, $default_color);
-            $stmt->execute();
+            $stmt->execute([$order_id, $item['id'], $item['quantity'], $default_size, $default_color]);
         }
         
         $conn->commit();
@@ -60,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
         header("Location: account.php?order=success");
         exit();
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack();
         $error = "Order failed: " . $e->getMessage();
     }
 }
@@ -69,14 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
 $ids = array_keys($_SESSION['cart']);
 $placeholders = implode(',', array_fill(0, count($ids), '?'));
 $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-$types = str_repeat('i', count($ids));
-$stmt->bind_param($types, ...$ids);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt->execute($ids);
+$result = $stmt;
 
 $cart_items = [];
 $total = 0;
-while ($item = $result->fetch_assoc()) {
+while ($item = $result->fetch()) {
     $item['quantity'] = $_SESSION['cart'][$item['id']];
     $item['subtotal'] = $item['price'] * $item['quantity'];
     $total += $item['subtotal'];

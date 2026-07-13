@@ -36,20 +36,29 @@ $price_filter = $_GET['price_filter'] ?? 'All';
 <div class="modern-storefront-grid">
     <?php
     $sql = "SELECT * FROM products WHERE 1=1";
+    $params = [];
     
     if ($selected_category !== 'All') {
-        $sql .= " AND category = '" . $conn->real_escape_string($selected_category) . "'";
+        $sql .= " AND category = ?";
+        $params[] = $selected_category;
     }
     
-    if ($price_filter == '0-5') { $sql .= " AND price <= 5"; }
-    elseif ($price_filter == '5-10') { $sql .= " AND price > 5 AND price <= 10"; }
-    elseif ($price_filter == '10-20') { $sql .= " AND price > 10 AND price <= 20"; }
-    elseif ($price_filter == '20+') { $sql .= " AND price > 20"; }
+    if ($price_filter == '0-5') { 
+        $sql .= " AND price <= 5"; 
+    } elseif ($price_filter == '5-10') { 
+        $sql .= " AND price > 5 AND price <= 10"; 
+    } elseif ($price_filter == '10-20') { 
+        $sql .= " AND price > 10 AND price <= 20"; 
+    } elseif ($price_filter == '20+') { 
+        $sql .= " AND price > 20"; 
+    }
 
-    $result = $conn->query($sql);
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $result = $stmt;
 
-    if ($result->num_rows > 0) {
-        while($item = $result->fetch_assoc()) {
+    if ($result->rowCount() > 0) {
+        while($item = $result->fetch()) {
             ?>
             <div class="premium-item-card">
                 <div class="product-image-container">
