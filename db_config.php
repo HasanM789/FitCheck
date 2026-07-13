@@ -86,26 +86,26 @@ try {
 }
 
 // ============================================
-// DATABASE-BASED SESSION HANDLER
+// DATABASE-BASED SESSION HANDLER - FIXED
 // ============================================
 
 // Custom session handler using database
-class DatabaseSessionHandler {
+class DatabaseSessionHandler implements SessionHandlerInterface {
     private $conn;
     
     public function __construct($conn) {
         $this->conn = $conn;
     }
     
-    public function open($savePath, $sessionName) {
+    public function open($savePath, $sessionName): bool {
         return true;
     }
     
-    public function close() {
+    public function close(): bool {
         return true;
     }
     
-    public function read($sessionId) {
+    public function read($sessionId): string {
         $stmt = $this->conn->prepare("SELECT data FROM sessions WHERE session_id = ?");
         $stmt->execute([$sessionId]);
         $result = $stmt->fetch();
@@ -118,7 +118,7 @@ class DatabaseSessionHandler {
         return '';
     }
     
-    public function write($sessionId, $data) {
+    public function write($sessionId, $data): bool {
         // Check if session exists
         $stmt = $this->conn->prepare("SELECT id FROM sessions WHERE session_id = ?");
         $stmt->execute([$sessionId]);
@@ -134,17 +134,17 @@ class DatabaseSessionHandler {
         return true;
     }
     
-    public function destroy($sessionId) {
+    public function destroy($sessionId): bool {
         $stmt = $this->conn->prepare("DELETE FROM sessions WHERE session_id = ?");
         $stmt->execute([$sessionId]);
         return true;
     }
     
-    public function gc($maxlifetime) {
+    public function gc($maxlifetime): int|false {
         // Delete sessions older than maxlifetime
         $stmt = $this->conn->prepare("DELETE FROM sessions WHERE datetime(last_accessed) < datetime('now', '-' || ? || ' seconds')");
         $stmt->execute([$maxlifetime]);
-        return true;
+        return $stmt->rowCount();
     }
 }
 
