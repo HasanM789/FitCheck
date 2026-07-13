@@ -8,6 +8,12 @@ include('header.php');
 
 $user_id = $_SESSION['user_id'];
 
+// Check if user is admin
+$stmt = $conn->prepare("SELECT is_admin FROM users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch();
+$is_admin = $user && $user['is_admin'] == 1;
+
 // Get order count
 $stmt = $conn->prepare("SELECT COUNT(*) as count FROM orders WHERE user_id = ?");
 $stmt->execute([$user_id]);
@@ -37,6 +43,11 @@ $orders_result = $stmt;
     <aside class="account-sidebar">
         <div class="sidebar-header">
             <h3>My Account</h3>
+            <?php if ($is_admin): ?>
+                <div style="margin-top: 8px;">
+                    <span style="background: #dc3545; color: #fff; padding: 2px 12px; border-radius: 12px; font-size: 11px;">🔑 Admin</span>
+                </div>
+            <?php endif; ?>
         </div>
         <nav class="sidebar-nav">
             <a href="account.php" class="active">
@@ -48,6 +59,14 @@ $orders_result = $stmt;
             <a href="profile.php">
                 <span class="nav-icon">◇</span> Profile Settings
             </a>
+            <?php if ($is_admin): ?>
+                <a href="admin.php" style="border-left-color: #dc3545; color: #dc3545;">
+                    <span class="nav-icon">⚙️</span> Admin Panel
+                </a>
+                <a href="add_product.php" style="border-left-color: #28a745; color: #28a745;">
+                    <span class="nav-icon">➕</span> Add Product
+                </a>
+            <?php endif; ?>
             <a href="logout.php" class="logout-link">
                 <span class="nav-icon">◉</span> Logout
             </a>
