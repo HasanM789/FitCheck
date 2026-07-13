@@ -6,9 +6,28 @@ echo "<h1>Test Adding to Cart</h1>";
 $session_id = $_SESSION['cart_session_id'];
 echo "Session ID: " . $session_id . "<br>";
 
-// Try to add product
-$product_id = 17;
+// First, show what products exist
+echo "<h2>Available Products:</h2>";
+$products = $conn->query("SELECT id, name FROM products")->fetchAll();
+if (count($products) > 0) {
+    echo "<ul>";
+    foreach ($products as $p) {
+        echo "<li>ID: " . $p['id'] . " - " . $p['name'] . "</li>";
+    }
+    echo "</ul>";
+} else {
+    echo "❌ No products found!<br>";
+}
 
+// Use the FIRST product ID from the database
+$product_id = 1; // Default to 1, but we'll get the actual first product
+
+if (count($products) > 0) {
+    $product_id = $products[0]['id'];
+    echo "<br>Using product ID: " . $product_id . "<br>";
+}
+
+// Try to add the product
 try {
     // Check if product exists
     $stmt = $conn->prepare("SELECT id, name FROM products WHERE id = ?");
@@ -24,12 +43,10 @@ try {
         $existing = $stmt->fetch();
         
         if ($existing) {
-            echo "Product already in cart. Updating quantity...<br>";
             $stmt = $conn->prepare("UPDATE cart SET quantity = quantity + 1 WHERE id = ?");
             $stmt->execute([$existing['id']]);
             echo "✅ Quantity updated!<br>";
         } else {
-            echo "Adding product to cart...<br>";
             $stmt = $conn->prepare("INSERT INTO cart (session_id, product_id, quantity) VALUES (?, ?, 1)");
             $stmt->execute([$session_id, $product_id]);
             echo "✅ Product added to cart!<br>";
@@ -63,5 +80,6 @@ try {
 }
 
 echo "<br><a href='cart.php'>Go to Cart</a><br>";
-echo "<a href='test_db_cart.php'>Go to DB Test</a>";
+echo "<a href='test_db_cart.php'>Go to DB Test</a><br>";
+echo "<a href='check_products.php'>Check Products</a>";
 ?>

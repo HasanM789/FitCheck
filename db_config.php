@@ -47,7 +47,6 @@ try {
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
         );
 
-        -- NEW: Cart table for database-based cart
         CREATE TABLE IF NOT EXISTS cart (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id VARCHAR(255) NOT NULL,
@@ -58,20 +57,23 @@ try {
         );
     ");
     
-    // Check if products exist
-    $stmt = $conn->query("SELECT COUNT(*) as count FROM products");
-    $count = $stmt->fetch()['count'];
+    // FORCE PRODUCTS TO HAVE IDs 17-20
+    // First, delete existing products
+    $conn->exec("DELETE FROM products");
     
-    // Insert sample products if table is empty
-    if ($count == 0) {
-        $conn->exec("
-            INSERT INTO products (name, description, price, image_url, category) VALUES
-            ('Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
-            ('Relaxed Fit Denim', 'Affordable and stylish light-wash denim jeans.', 12.00, 'denim_jeans.jpg', 'Bottoms'),
-            ('Oversized Varsity Hoodie', 'Cozy fleece-lined hoodie perfect for college classes.', 15.00, 'hoodie.jpg', 'Outerwear'),
-            ('Casual Summer Dress', 'Lightweight, breathable floral dress for daily wear.', 9.99, 'dress.jpg', 'Dresses')
-        ");
-    }
+    // Reset auto-increment
+    $conn->exec("DELETE FROM sqlite_sequence WHERE name='products'");
+    
+    // Insert products with specific IDs 17-20
+    $conn->exec("
+        INSERT INTO products (id, name, description, price, image_url, category) VALUES
+        (17, 'Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
+        (18, 'Relaxed Fit Denim', 'Affordable and stylish light-wash denim jeans.', 12.00, 'denim_jeans.jpg', 'Bottoms'),
+        (19, 'Oversized Varsity Hoodie', 'Cozy fleece-lined hoodie perfect for college classes.', 15.00, 'hoodie.jpg', 'Outerwear'),
+        (20, 'Casual Summer Dress', 'Lightweight, breathable floral dress for daily wear.', 9.99, 'dress.jpg', 'Dresses')
+    ");
+    
+    echo "Products inserted with IDs 17-20!<br>";
     
 } catch (PDOException $e) {
     die("Database Connection Failed: " . $e->getMessage());
