@@ -1,5 +1,5 @@
 <?php
-// SQLite Database - Works everywhere with no setup!
+// SQLite Database Configuration
 $db_file = __DIR__ . '/fitcheck.db';
 
 try {
@@ -67,13 +67,40 @@ try {
     die("Database Connection Failed: " . $e->getMessage());
 }
 
-// Start session - FORCE it to work
+// ============================================
+// SESSION CONFIGURATION - FIX FOR RENDER
+// ============================================
+
+// Set session cookie parameters BEFORE starting session
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',  // Auto-detect
+    'secure' => false,  // Set to true if using HTTPS
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+// Start session if not already started
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// Initialize cart if not exists (for ALL pages)
+// Regenerate session ID periodically for security (optional)
+if (!isset($_SESSION['created'])) {
+    $_SESSION['created'] = time();
+} elseif (time() - $_SESSION['created'] > 1800) {
+    // Session older than 30 minutes
+    session_regenerate_id(true);
+    $_SESSION['created'] = time();
+}
+
+// Initialize cart if not exists
 if (!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = [];
 }
+
+// Debug: Log session info (remove after testing)
+error_log("Session ID: " . session_id());
+error_log("Session Cart: " . print_r($_SESSION['cart'], true));
 ?>

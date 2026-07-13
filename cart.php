@@ -1,31 +1,29 @@
-<?php 
-// Start session immediately
-session_start();
+<?php
+// ============================================
+// CART PAGE - FIX FOR RENDER
+// ============================================
 
-require_once('db_config.php'); 
-include('header.php'); 
+// Set session cookie parameters BEFORE session start
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => false,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
 
-// Get cart items from session
-$cart_items = [];
-$total = 0;
-$cart_count = 0;
-
-// Check if cart has items
-if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
-    $ids = array_keys($_SESSION['cart']);
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-    $stmt->execute($ids);
-    $result = $stmt;
-    
-    while ($item = $result->fetch()) {
-        $item['quantity'] = $_SESSION['cart'][$item['id']];
-        $item['subtotal'] = $item['price'] * $item['quantity'];
-        $total += $item['subtotal'];
-        $cart_count += $item['quantity'];
-        $cart_items[] = $item;
-    }
+// Start session
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
 }
+
+require_once('db_config.php');
+include('header.php');
+
+// Debug: Log session info (remove after testing)
+error_log("Cart Page - Session ID: " . session_id());
+error_log("Cart Page - Session Cart: " . print_r($_SESSION['cart'], true));
 
 // Handle remove item
 if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
@@ -70,6 +68,27 @@ if (isset($_GET['clear'])) {
     header("Location: cart.php");
     exit();
 }
+
+// Get cart items
+$cart_items = [];
+$total = 0;
+$cart_count = 0;
+
+if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
+    $ids = array_keys($_SESSION['cart']);
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
+    $stmt->execute($ids);
+    $result = $stmt;
+    
+    while ($item = $result->fetch()) {
+        $item['quantity'] = $_SESSION['cart'][$item['id']];
+        $item['subtotal'] = $item['price'] * $item['quantity'];
+        $total += $item['subtotal'];
+        $cart_count += $item['quantity'];
+        $cart_items[] = $item;
+    }
+}
 ?>
 
 <div class="cart-page">
@@ -90,9 +109,14 @@ if (isset($_GET['clear'])) {
             <div class="cart-items">
                 <?php foreach ($cart_items as $item): ?>
                     <div class="cart-item">
+                        <div class="cart-item-image">
+                            <div class="image-placeholder">
+                                <?php echo strtoupper(substr($item['name'], 0, 2)); ?>
+                            </div>
+                        </div>
                         <div class="cart-item-details">
                             <h3><?php echo htmlspecialchars($item['name']); ?></h3>
-                            <p><?php echo htmlspecialchars($item['description']); ?></p>
+                            <p class="item-description"><?php echo htmlspecialchars($item['description']); ?></p>
                             <span class="item-price"><?php echo number_format($item['price'], 2); ?> BD</span>
                         </div>
                         <div class="cart-item-actions">

@@ -1,6 +1,22 @@
 <?php
-// Start session immediately
-session_start();
+// ============================================
+// CART ACTION - FIX FOR RENDER
+// ============================================
+
+// Set session cookie parameters BEFORE session start
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => false,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+// Start session
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 require_once('db_config.php');
 
@@ -27,7 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_id'])) {
         $_SESSION['cart'][$product_id] = 1;
     }
     
-    // Force save session
+    // Debug: Log cart contents
+    error_log("Cart after adding: " . print_r($_SESSION['cart'], true));
+    
+    // Force session to save
     session_write_close();
 }
 
