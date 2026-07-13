@@ -4,6 +4,9 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+// Get the session ID before destroying
+$session_id = session_id();
+
 // Clear session data
 $_SESSION = array();
 
@@ -11,7 +14,6 @@ $_SESSION = array();
 session_destroy();
 
 // Delete session from database
-$session_id = session_id();
 if (!empty($session_id)) {
     try {
         require_once('db_config.php');
