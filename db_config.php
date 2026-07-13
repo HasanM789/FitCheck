@@ -55,6 +55,14 @@ try {
             added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
         );
+
+        -- NEW: Session table for database-based sessions
+        CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id VARCHAR(255) NOT NULL UNIQUE,
+            data TEXT NOT NULL,
+            last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     ");
     
     // Check if products exist with IDs 17-20
@@ -78,14 +86,77 @@ try {
 }
 
 // ============================================
-// SESSION FIX - KEEP USER LOGGED IN
+// DATABASE-BASED SESSION HANDLER
 // ============================================
 
-// Set session cookie parameters for longer session
+// Custom session handler using database
+class DatabaseSessionHandler {
+    private $conn;
+    
+    public function __construct($conn) {
+        $this->conn = $conn;
+    }
+    
+    public function open($savePath, $sessionName) {
+        return true;
+    }
+    
+    public function close() {
+        return true;
+    }
+    
+    public function read($sessionId) {
+        $stmt = $this->conn->prepare("SELECT data FROM sessions WHERE session_id = ?");
+        $stmt->execute([$sessionId]);
+        $result = $stmt->fetch();
+        if ($result) {
+            // Update last_accessed
+            $stmt = $this->conn->prepare("UPDATE sessions SET last_accessed = CURRENT_TIMESTAMP WHERE session_id = ?");
+            $stmt->execute([$sessionId]);
+            return $result['data'];
+        }
+        return '';
+    }
+    
+    public function write($sessionId, $data) {
+        // Check if session exists
+        $stmt = $this->conn->prepare("SELECT id FROM sessions WHERE session_id = ?");
+        $stmt->execute([$sessionId]);
+        if ($stmt->fetch()) {
+            // Update existing session
+            $stmt = $this->conn->prepare("UPDATE sessions SET data = ?, last_accessed = CURRENT_TIMESTAMP WHERE session_id = ?");
+            $stmt->execute([$data, $sessionId]);
+        } else {
+            // Insert new session
+            $stmt = $this->conn->prepare("INSERT INTO sessions (session_id, data, last_accessed) VALUES (?, ?, CURRENT_TIMESTAMP)");
+            $stmt->execute([$sessionId, $data]);
+        }
+        return true;
+    }
+    
+    public function destroy($sessionId) {
+        $stmt = $this->conn->prepare("DELETE FROM sessions WHERE session_id = ?");
+        $stmt->execute([$sessionId]);
+        return true;
+    }
+    
+    public function gc($maxlifetime) {
+        // Delete sessions older than maxlifetime
+        $stmt = $this->conn->prepare("DELETE FROM sessions WHERE datetime(last_accessed) < datetime('now', '-' || ? || ' seconds')");
+        $stmt->execute([$maxlifetime]);
+        return true;
+    }
+}
+
+// Register the custom session handler
+$handler = new DatabaseSessionHandler($conn);
+session_set_save_handler($handler, true);
+
+// Set session parameters
 ini_set('session.gc_maxlifetime', 604800); // 7 days
 ini_set('session.cookie_lifetime', 604800); // 7 days
 session_set_cookie_params([
-    'lifetime' => 604800, // 7 days in seconds
+    'lifetime' => 604800,
     'path' => '/',
     'domain' => '',
     'secure' => false,
@@ -101,18 +172,6 @@ if (session_status() == PHP_SESSION_NONE) {
 // Get or create session ID for cart
 if (!isset($_SESSION['cart_session_id'])) {
     $_SESSION['cart_session_id'] = session_id() . '_' . time();
-}
-
-// Check if user is logged in and session is still valid
-if (isset($_SESSION['user_id'])) {
-    $_SESSION['last_activity'] = time();
-}
-
-// Auto-logout after 7 days of inactivity
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 604800)) {
-    session_unset();
-    session_destroy();
-    session_start();
 }
 
 // Update last activity time
