@@ -104,15 +104,12 @@ if (!isset($_SESSION['cart_session_id'])) {
 }
 
 // Check if user is logged in and session is still valid
-// If user is logged in, refresh the session to keep it alive
 if (isset($_SESSION['user_id'])) {
-    // Refresh session to keep it alive
     $_SESSION['last_activity'] = time();
 }
 
-// Optional: Auto-logout after 7 days of inactivity
+// Auto-logout after 7 days of inactivity
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 604800)) {
-    // 7 days passed, logout user
     session_unset();
     session_destroy();
     session_start();

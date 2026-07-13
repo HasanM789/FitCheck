@@ -9,12 +9,13 @@ if (isset($_SESSION['user_id'])) {
     $_SESSION['last_activity'] = time();
 }
 
-// DO NOT include db_config here - it's already included in the page files
-// The database connection $conn is already available from db_config.php
-
-// Get cart count directly using the existing $conn
+// Get cart count from database
+// Note: $conn is NOT available here, so we need to include db_config
+// But only if it hasn't been included yet
 $total_items = 0;
-if (isset($_SESSION['cart_session_id']) && isset($conn)) {
+
+// Check if db_config has been included (check if $conn exists)
+if (isset($conn) && isset($_SESSION['cart_session_id'])) {
     try {
         $stmt = $conn->prepare("SELECT SUM(quantity) as total FROM cart WHERE session_id = ?");
         $stmt->execute([$_SESSION['cart_session_id']]);

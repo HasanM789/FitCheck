@@ -1,14 +1,15 @@
 <?php
+// Start session and include db_config FIRST
 require_once('db_config.php');
+
+// Check if user is logged in - MUST be before ANY HTML output
 if (!isset($_SESSION['user_id'])) { 
     header("Location: login.php"); 
     exit(); 
 }
-include('header.php');
 
+// Check if cart is empty - MUST be before ANY HTML output
 $session_id = $_SESSION['cart_session_id'];
-
-// Check if cart is empty
 $stmt = $conn->prepare("SELECT COUNT(*) as count FROM cart WHERE session_id = ?");
 $stmt->execute([$session_id]);
 $cart_count = $stmt->fetch()['count'];
@@ -18,7 +19,7 @@ if ($cart_count == 0) {
     exit();
 }
 
-// Process checkout
+// Process checkout - MUST be before ANY HTML output
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     $user_id = $_SESSION['user_id'];
     $total = 0;
@@ -66,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
         $error = "Order failed: " . $e->getMessage();
     }
 }
+
+// NOW include header AFTER all redirects are handled
+include('header.php');
 
 // Get cart items for display
 $stmt = $conn->prepare("
