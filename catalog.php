@@ -19,7 +19,7 @@ $price_filter = $_GET['price_filter'] ?? 'All';
         <?php endforeach; ?>
     </div>
 
-    <!-- Updated Price Filter with visibility fix -->
+    <!-- Price Filter -->
     <form action="catalog.php" method="GET" style="display: flex; gap: 15px; align-items: center; background: #0f0f0f; padding: 10px 20px; border: 1px solid #222; border-radius: 50px;">
         <input type="hidden" name="category" value="<?php echo htmlspecialchars($selected_category); ?>">
         <label style="color: #666; font-size: 12px; font-weight: bold; text-transform: uppercase;">Price Range:</label>
@@ -35,14 +35,17 @@ $price_filter = $_GET['price_filter'] ?? 'All';
 
 <div class="modern-storefront-grid">
     <?php
+    // Build the query
     $sql = "SELECT * FROM products WHERE 1=1";
-    $params = [];
+    $params = array();
     
+    // Add category filter
     if ($selected_category !== 'All') {
         $sql .= " AND category = ?";
         $params[] = $selected_category;
     }
     
+    // Add price filter
     if ($price_filter == '0-5') { 
         $sql .= " AND price <= 5"; 
     } elseif ($price_filter == '5-10') { 
@@ -53,41 +56,59 @@ $price_filter = $_GET['price_filter'] ?? 'All';
         $sql .= " AND price > 20"; 
     }
 
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
-    $result = $stmt;
-
-    if ($result->rowCount() > 0) {
-        while($item = $result->fetch()) {
-            ?>
-            <div class="premium-item-card">
-                <div class="product-image-container">
-                    <?php 
-                    $image_path = !empty($item['image_url']) ? $item['image_url'] : '';
-                    if (!empty($image_path) && file_exists($image_path)): ?>
-                        <img src="<?php echo htmlspecialchars($image_path); ?>" class="product-image" loading="lazy">
-                    <?php else: ?>
-                        <div class="image-placeholder">
-                            <span class="placeholder-icon">👕</span>
-                            <span class="placeholder-code"><?php echo strtoupper(substr($item['name'], 0, 2)); ?></span>
-                        </div>
-                    <?php endif; ?>
+    // Debug: Log the query
+    error_log("SQL Query: " . $sql);
+    error_log("Params: " . print_r($params, true));
+    
+    // Execute the query
+    try {
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt;
+        
+        // Debug: Log row count
+        error_log("Row count: " . $result->rowCount());
+        
+        if ($result->rowCount() > 0) {
+            while($item = $result->fetch()) {
+                ?>
+                <div class="premium-item-card">
+                    <div class="product-image-container">
+                        <?php 
+                        $image_path = !empty($item['image_url']) ? $item['image_url'] : '';
+                        if (!empty($image_path) && file_exists($image_path)): ?>
+                            <img src="<?php echo htmlspecialchars($image_path); ?>" class="product-image" loading="lazy">
+                        <?php else: ?>
+                            <div class="image-placeholder">
+                                <span class="placeholder-icon">👕</span>
+                                <span class="placeholder-code"><?php echo strtoupper(substr($item['name'], 0, 2)); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="product-info">
+                        <div class="app-canvas-container">PREMIUM OVERVIEW</div>
+                        <h3><?php echo htmlspecialchars($item['name']); ?></h3>
+                        <p><?php echo htmlspecialchars($item['description']); ?></p>
+                        <div class="product-price"><?php echo number_format($item['price'], 2); ?> BD</div>
+                    </div>
+                    <form action="cart_action.php" method="POST">
+                        <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
+                        <button type="submit" class="premium-purchase-btn">Add to Cart</button>
+                    </form>
                 </div>
-                <div class="product-info">
-                    <div class="app-canvas-container">PREMIUM OVERVIEW</div>
-                    <h3><?php echo htmlspecialchars($item['name']); ?></h3>
-                    <p><?php echo htmlspecialchars($item['description']); ?></p>
-                    <div class="product-price"><?php echo number_format($item['price'], 2); ?> BD</div>
-                </div>
-                <form action="cart_action.php" method="POST">
-                    <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
-                    <button type="submit" class="premium-purchase-btn">Add to Cart</button>
-                </form>
-            </div>
-            <?php
+                <?php
+            }
+        } else {
+            // Show helpful message with debug info
+            echo "<p style='text-align: center; width: 100%; color: #94a3b8; padding: 40px 0;'>";
+            echo "No items match your filters.<br>";
+            echo "<small>Debug: Category='$selected_category', Price Filter='$price_filter'</small>";
+            echo "</p>";
         }
-    } else {
-        echo "<p style='text-align: center; width: 100%; color: #94a3b8; padding: 40px 0;'>No items match your filters.</p>";
+    } catch (Exception $e) {
+        echo "<p style='text-align: center; width: 100%; color: #dc3545; padding: 40px 0;'>";
+        echo "Error: " . $e->getMessage();
+        echo "</p>";
     }
     ?>
 </div>
