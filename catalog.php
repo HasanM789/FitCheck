@@ -1,9 +1,6 @@
 <?php 
 require_once('db_config.php'); 
 include('header.php'); 
-
-$selected_category = $_GET['category'] ?? 'All';
-$price_filter = $_GET['price_filter'] ?? 'All';
 ?>
 
 <div class="filter-menu-bar" style="display: flex; flex-direction: column; align-items: center; gap: 25px; margin-bottom: 40px;">
@@ -12,78 +9,46 @@ $price_filter = $_GET['price_filter'] ?? 'All';
     <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
         <?php $categories = ['All', 'Tops', 'Bottoms', 'Hoodies', 'Shoes']; ?>
         <?php foreach ($categories as $cat): ?>
-            <a href="catalog.php?category=<?php echo $cat; ?>&price_filter=<?php echo urlencode($price_filter); ?>" 
-               class="category-capsule <?php echo $selected_category == $cat ? 'active' : ''; ?>">
+            <a href="catalog.php?category=<?php echo $cat; ?>" 
+               class="category-capsule <?php echo ($_GET['category'] ?? 'All') == $cat ? 'active' : ''; ?>">
                <?php echo $cat; ?>
             </a>
         <?php endforeach; ?>
     </div>
-
-    <!-- Price Filter -->
-    <form action="catalog.php" method="GET" style="display: flex; gap: 15px; align-items: center; background: #0f0f0f; padding: 10px 20px; border: 1px solid #222; border-radius: 50px;">
-        <input type="hidden" name="category" value="<?php echo htmlspecialchars($selected_category); ?>">
-        <label style="color: #666; font-size: 12px; font-weight: bold; text-transform: uppercase;">Price Range:</label>
-        <select name="price_filter" onchange="this.form.submit()" style="background: transparent; color: #fff; border: none; outline: none; cursor: pointer; font-size: 14px;">
-            <option value="All" style="background: #111; color: #fff;" <?php if($price_filter == 'All') echo 'selected'; ?>>All Prices</option>
-            <option value="0-5" style="background: #111; color: #fff;" <?php if($price_filter == '0-5') echo 'selected'; ?>>0 - 5 BD</option>
-            <option value="5-10" style="background: #111; color: #fff;" <?php if($price_filter == '5-10') echo 'selected'; ?>>5 - 10 BD</option>
-            <option value="10-20" style="background: #111; color: #fff;" <?php if($price_filter == '10-20') echo 'selected'; ?>>10 - 20 BD</option>
-            <option value="20+" style="background: #111; color: #fff;" <?php if($price_filter == '20+') echo 'selected'; ?>>20 BD & Above</option>
-        </select>
-    </form>
 </div>
 
 <div class="modern-storefront-grid">
     <?php
-    // Build the query
-    $sql = "SELECT * FROM products WHERE 1=1";
-    $params = array();
+    // SIMPLE QUERY - Get all products
+    $sql = "SELECT * FROM products";
     
-    // Add category filter
-    if ($selected_category !== 'All') {
-        $sql .= " AND category = ?";
-        $params[] = $selected_category;
+    // Add category filter if not "All"
+    if (isset($_GET['category']) && $_GET['category'] != 'All') {
+        $sql = "SELECT * FROM products WHERE category = '" . $_GET['category'] . "'";
     }
     
-    // Add price filter
-    if ($price_filter == '0-5') { 
-        $sql .= " AND price <= 5"; 
-    } elseif ($price_filter == '5-10') { 
-        $sql .= " AND price > 5 AND price <= 10"; 
-    } elseif ($price_filter == '10-20') { 
-        $sql .= " AND price > 10 AND price <= 20"; 
-    } elseif ($price_filter == '20+') { 
-        $sql .= " AND price > 20"; 
-    }
-
-    // Debug: Log the query
-    error_log("SQL Query: " . $sql);
-    error_log("Params: " . print_r($params, true));
+    // DEBUG: Let's see what the query is
+    // echo "<!-- SQL: " . $sql . " -->";
     
-    // Execute the query
-    try {
-        $stmt = $conn->prepare($sql);
-        $stmt->execute($params);
-        $result = $stmt;
+    // Execute query
+    $result = $conn->query($sql);
+    
+    // DEBUG: Check if we got results
+    if (!$result) {
+        echo "<p>Error: " . $conn->errorInfo()[2] . "</p>";
+    } else {
+        $count = $result->rowCount();
+        // echo "<!-- Found $count products -->";
         
-        // Debug: Log row count
-        error_log("Row count: " . $result->rowCount());
-        
-        if ($result->rowCount() > 0) {
+        if ($count > 0) {
             while($item = $result->fetch()) {
                 ?>
                 <div class="premium-item-card">
                     <div class="product-image-container">
-                        <?php 
-                        $image_path = !empty($item['image_url']) ? $item['image_url'] : '';
-                        if (!empty($image_path) && file_exists($image_path)): ?>
-                            <img src="<?php echo htmlspecialchars($image_path); ?>" class="product-image" loading="lazy">
-                        <?php else: ?>
-                            <div class="image-placeholder">
-                                <span class="placeholder-icon">👕</span>
-                                <span class="placeholder-code"><?php echo strtoupper(substr($item['name'], 0, 2)); ?></span>
-                            </div>
-                        <?php endif; ?>
+                        <div class="image-placeholder">
+                            <span class="placeholder-icon">👕</span>
+                            <span class="placeholder-code"><?php echo strtoupper(substr($item['name'], 0, 2)); ?></span>
+                        </div>
                     </div>
                     <div class="product-info">
                         <div class="app-canvas-container">PREMIUM OVERVIEW</div>
@@ -99,16 +64,8 @@ $price_filter = $_GET['price_filter'] ?? 'All';
                 <?php
             }
         } else {
-            // Show helpful message with debug info
-            echo "<p style='text-align: center; width: 100%; color: #94a3b8; padding: 40px 0;'>";
-            echo "No items match your filters.<br>";
-            echo "<small>Debug: Category='$selected_category', Price Filter='$price_filter'</small>";
-            echo "</p>";
+            echo "<p style='text-align: center; width: 100%; color: #94a3b8; padding: 40px 0;'>No items found in database.</p>";
         }
-    } catch (Exception $e) {
-        echo "<p style='text-align: center; width: 100%; color: #dc3545; padding: 40px 0;'>";
-        echo "Error: " . $e->getMessage();
-        echo "</p>";
     }
     ?>
 </div>
