@@ -90,9 +90,14 @@ while ($item = $result->fetch()) {
             <div class="cart-items">
                 <?php foreach ($cart_items as $item): ?>
                     <div class="cart-item">
+                        <div class="cart-item-image">
+                            <div class="image-placeholder">
+                                <?php echo strtoupper(substr($item['name'], 0, 2)); ?>
+                            </div>
+                        </div>
                         <div class="cart-item-details">
                             <h3><?php echo htmlspecialchars($item['name']); ?></h3>
-                            <p><?php echo htmlspecialchars($item['description']); ?></p>
+                            <p class="item-description"><?php echo htmlspecialchars($item['description']); ?></p>
                             <span class="item-price"><?php echo number_format($item['price'], 2); ?> BD</span>
                         </div>
                         <div class="cart-item-actions">
