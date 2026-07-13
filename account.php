@@ -36,6 +36,10 @@ $stmt = $conn->prepare("
 ");
 $stmt->execute([$user_id]);
 $orders_result = $stmt;
+
+// Debug: Log the number of orders found
+$order_rows = $orders_result->rowCount();
+error_log("Orders found for user $user_id: " . $order_rows);
 ?>
 
 <div class="account-container">

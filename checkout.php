@@ -41,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     // Create order
     $conn->beginTransaction();
     try {
-        $stmt = $conn->prepare("INSERT INTO orders (user_id, total_price) VALUES (?, ?)");
+        // Insert into orders - removed coupon_used column
+        $stmt = $conn->prepare("INSERT INTO orders (user_id, total_price, order_date) VALUES (?, ?, datetime('now'))");
         $stmt->execute([$user_id, $total]);
         $order_id = $conn->lastInsertId();
         
@@ -65,6 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     } catch (Exception $e) {
         $conn->rollBack();
         $error = "Order failed: " . $e->getMessage();
+        // Debug: Log the error
+        error_log("Checkout error: " . $e->getMessage());
     }
 }
 
