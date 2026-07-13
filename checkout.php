@@ -6,8 +6,14 @@ if (!isset($_SESSION['user_id'])) {
 }
 include('header.php');
 
+$session_id = $_SESSION['cart_session_id'];
+
 // Check if cart is empty
-if (empty($_SESSION['cart'])) {
+$stmt = $conn->prepare("SELECT COUNT(*) as count FROM cart WHERE session_id = ?");
+$stmt->execute([$session_id]);
+$cart_count = $stmt->fetch()['count'];
+
+if ($cart_count == 0) {
     header("Location: cart.php");
     exit();
 }
@@ -18,40 +24,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
     $total = 0;
     
     // Get cart items
-    $ids = array_keys($_SESSION['cart']);
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-    $stmt->execute($ids);
-    $result = $stmt;
+    $stmt = $conn->prepare("
+        SELECT c.product_id, c.quantity, p.price 
+        FROM cart c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.session_id = ?
+    ");
+    $stmt->execute([$session_id]);
+    $cart_items = $stmt->fetchAll();
     
-    $cart_items = [];
-    while ($item = $result->fetch()) {
-        $item['quantity'] = $_SESSION['cart'][$item['id']];
-        $item['subtotal'] = $item['price'] * $item['quantity'];
-        $total += $item['subtotal'];
-        $cart_items[] = $item;
+    foreach ($cart_items as $item) {
+        $total += $item['price'] * $item['quantity'];
     }
     
-    // Create order - SQLite supports transactions
+    // Create order
     $conn->beginTransaction();
     try {
         $stmt = $conn->prepare("INSERT INTO orders (user_id, total_price) VALUES (?, ?)");
         $stmt->execute([$user_id, $total]);
         $order_id = $conn->lastInsertId();
         
-        // Add order items with default size/color
+        // Add order items
         $stmt = $conn->prepare("INSERT INTO order_items (order_id, product_id, quantity, selected_size, selected_color) VALUES (?, ?, ?, ?, ?)");
         $default_size = 'M';
         $default_color = 'Black';
         
         foreach ($cart_items as $item) {
-            $stmt->execute([$order_id, $item['id'], $item['quantity'], $default_size, $default_color]);
+            $stmt->execute([$order_id, $item['product_id'], $item['quantity'], $default_size, $default_color]);
         }
         
-        $conn->commit();
-        
         // Clear cart
-        $_SESSION['cart'] = [];
+        $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ?");
+        $stmt->execute([$session_id]);
+        
+        $conn->commit();
         
         header("Location: account.php?order=success");
         exit();
@@ -62,19 +68,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['place_order'])) {
 }
 
 // Get cart items for display
-$ids = array_keys($_SESSION['cart']);
-$placeholders = implode(',', array_fill(0, count($ids), '?'));
-$stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-$stmt->execute($ids);
-$result = $stmt;
+$stmt = $conn->prepare("
+    SELECT c.product_id, c.quantity, p.name, p.description, p.price 
+    FROM cart c
+    JOIN products p ON c.product_id = p.id
+    WHERE c.session_id = ?
+");
+$stmt->execute([$session_id]);
+$cart_items = $stmt->fetchAll();
 
-$cart_items = [];
 $total = 0;
-while ($item = $result->fetch()) {
-    $item['quantity'] = $_SESSION['cart'][$item['id']];
-    $item['subtotal'] = $item['price'] * $item['quantity'];
-    $total += $item['subtotal'];
-    $cart_items[] = $item;
+foreach ($cart_items as $item) {
+    $total += $item['price'] * $item['quantity'];
 }
 ?>
 
@@ -85,14 +90,10 @@ while ($item = $result->fetch()) {
     </div>
 
     <?php if (isset($error)): ?>
-        <div class="error-message">
-            <span class="error-icon">⚠</span>
-            <?php echo htmlspecialchars($error); ?>
-        </div>
+        <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
     <?php endif; ?>
 
     <div class="checkout-grid">
-        <!-- Left Column: Order Summary -->
         <div class="order-summary-card">
             <div class="card-header">
                 <h2>Order Summary</h2>
@@ -107,11 +108,8 @@ while ($item = $result->fetch()) {
                                 <span class="item-name"><?php echo htmlspecialchars($item['name']); ?></span>
                                 <span class="item-quantity">× <?php echo $item['quantity']; ?></span>
                             </div>
-                            <span class="item-price"><?php echo number_format($item['subtotal'], 2); ?> BD</span>
+                            <span class="item-price"><?php echo number_format($item['price'] * $item['quantity'], 2); ?> BD</span>
                         </div>
-                        <?php if (!empty($item['description'])): ?>
-                            <div class="item-description-small"><?php echo htmlspecialchars(substr($item['description'], 0, 60)); ?></div>
-                        <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -135,7 +133,6 @@ while ($item = $result->fetch()) {
             </div>
         </div>
 
-        <!-- Right Column: Confirm Order -->
         <div class="confirm-order-card">
             <div class="card-header">
                 <h2>Confirm Order</h2>
@@ -158,15 +155,9 @@ while ($item = $result->fetch()) {
 
             <div class="order-actions">
                 <form method="POST" class="place-order-form">
-                    <button type="submit" name="place_order" class="place-order-btn">
-                        <span class="btn-icon">✓</span> Place Order
-                    </button>
+                    <button type="submit" name="place_order" class="place-order-btn">Place Order</button>
                 </form>
                 <a href="cart.php" class="back-to-cart">← Back to Cart</a>
-            </div>
-
-            <div class="order-note">
-                <p>By placing your order, you agree to our <a href="#" class="terms-link">Terms & Conditions</a>.</p>
             </div>
         </div>
     </div>

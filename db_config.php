@@ -46,6 +46,16 @@ try {
             FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
         );
+
+        -- NEW: Cart table for database-based cart
+        CREATE TABLE IF NOT EXISTS cart (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id VARCHAR(255) NOT NULL,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        );
     ");
     
     // Check if products exist
@@ -67,17 +77,13 @@ try {
     die("Database Connection Failed: " . $e->getMessage());
 }
 
-// ============================================
-// SESSION CONFIGURATION - FIX FOR RENDER
-// ============================================
-
-// Start session if not already started
+// Start session
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// Initialize cart if not exists
-if (!isset($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
+// Get or create session ID for cart
+if (!isset($_SESSION['cart_session_id'])) {
+    $_SESSION['cart_session_id'] = session_id() . '_' . time();
 }
 ?>

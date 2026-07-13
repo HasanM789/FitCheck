@@ -1,5 +1,5 @@
 <?php 
-// Start session first
+// Start session
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
@@ -7,65 +7,72 @@ if (session_status() == PHP_SESSION_NONE) {
 require_once('db_config.php'); 
 include('header.php'); 
 
+$session_id = $_SESSION['cart_session_id'];
+
 // Handle remove item
 if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
-    $remove_id = (int)$_GET['remove'];
-    if (isset($_SESSION['cart'][$remove_id])) {
-        unset($_SESSION['cart'][$remove_id]);
-        header("Location: cart.php");
-        exit();
-    }
+    $product_id = (int)$_GET['remove'];
+    $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ? AND product_id = ?");
+    $stmt->execute([$session_id, $product_id]);
+    header("Location: cart.php");
+    exit();
 }
 
 // Handle increment
 if (isset($_GET['increment']) && is_numeric($_GET['increment'])) {
     $product_id = (int)$_GET['increment'];
-    if (isset($_SESSION['cart'][$product_id])) {
-        $_SESSION['cart'][$product_id]++;
-        header("Location: cart.php");
-        exit();
-    }
+    $stmt = $conn->prepare("UPDATE cart SET quantity = quantity + 1 WHERE session_id = ? AND product_id = ?");
+    $stmt->execute([$session_id, $product_id]);
+    header("Location: cart.php");
+    exit();
 }
 
 // Handle decrement
 if (isset($_GET['decrement']) && is_numeric($_GET['decrement'])) {
     $product_id = (int)$_GET['decrement'];
-    if (isset($_SESSION['cart'][$product_id])) {
-        $_SESSION['cart'][$product_id]--;
-        if ($_SESSION['cart'][$product_id] <= 0) {
-            unset($_SESSION['cart'][$product_id]);
-        }
-        header("Location: cart.php");
-        exit();
+    $stmt = $conn->prepare("UPDATE cart SET quantity = quantity - 1 WHERE session_id = ? AND product_id = ?");
+    $stmt->execute([$session_id, $product_id]);
+    
+    // Check if quantity is 0 or less, then delete
+    $stmt = $conn->prepare("SELECT quantity FROM cart WHERE session_id = ? AND product_id = ?");
+    $stmt->execute([$session_id, $product_id]);
+    $result = $stmt->fetch();
+    if ($result && $result['quantity'] <= 0) {
+        $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ? AND product_id = ?");
+        $stmt->execute([$session_id, $product_id]);
     }
-}
-
-// Clear cart
-if (isset($_GET['clear'])) {
-    $_SESSION['cart'] = [];
+    
     header("Location: cart.php");
     exit();
 }
 
-// Get cart items
+// Clear cart
+if (isset($_GET['clear'])) {
+    $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ?");
+    $stmt->execute([$session_id]);
+    header("Location: cart.php");
+    exit();
+}
+
+// Get cart items from database
 $cart_items = [];
 $total = 0;
 $cart_count = 0;
 
-if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
-    $ids = array_keys($_SESSION['cart']);
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-    $stmt->execute($ids);
-    $result = $stmt;
-    
-    while ($item = $result->fetch()) {
-        $item['quantity'] = $_SESSION['cart'][$item['id']];
-        $item['subtotal'] = $item['price'] * $item['quantity'];
-        $total += $item['subtotal'];
-        $cart_count += $item['quantity'];
-        $cart_items[] = $item;
-    }
+$stmt = $conn->prepare("
+    SELECT c.product_id, c.quantity, p.name, p.description, p.price 
+    FROM cart c
+    JOIN products p ON c.product_id = p.id
+    WHERE c.session_id = ?
+");
+$stmt->execute([$session_id]);
+$result = $stmt;
+
+while ($item = $result->fetch()) {
+    $item['subtotal'] = $item['price'] * $item['quantity'];
+    $total += $item['subtotal'];
+    $cart_count += $item['quantity'];
+    $cart_items[] = $item;
 }
 ?>
 
@@ -99,11 +106,11 @@ if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
                         </div>
                         <div class="cart-item-actions">
                             <div class="quantity-control">
-                                <a href="cart.php?decrement=<?php echo $item['id']; ?>" class="qty-btn">−</a>
+                                <a href="cart.php?decrement=<?php echo $item['product_id']; ?>" class="qty-btn">−</a>
                                 <span class="qty-display"><?php echo $item['quantity']; ?></span>
-                                <a href="cart.php?increment=<?php echo $item['id']; ?>" class="qty-btn">+</a>
+                                <a href="cart.php?increment=<?php echo $item['product_id']; ?>" class="qty-btn">+</a>
                             </div>
-                            <a href="cart.php?remove=<?php echo $item['id']; ?>" class="remove-btn">Remove</a>
+                            <a href="cart.php?remove=<?php echo $item['product_id']; ?>" class="remove-btn">Remove</a>
                         </div>
                         <div class="cart-item-total">
                             <span class="subtotal-label">SUBTOTAL</span>
