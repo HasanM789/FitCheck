@@ -61,13 +61,9 @@ try {
     $stmt = $conn->query("SELECT COUNT(*) as count FROM products WHERE id >= 17 AND id <= 20");
     $count = $stmt->fetch()['count'];
     
-    // If products with IDs 17-20 don't exist, insert them
     if ($count < 4) {
-        // Clear existing products
         $conn->exec("DELETE FROM products");
-        // Reset auto-increment
         $conn->exec("DELETE FROM sqlite_sequence WHERE name='products'");
-        // Insert with specific IDs
         $conn->exec("
             INSERT INTO products (id, name, description, price, image_url, category) VALUES
             (17, 'Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
@@ -81,7 +77,23 @@ try {
     die("Database Connection Failed: " . $e->getMessage());
 }
 
-// Start session - NO OUTPUT BEFORE THIS!
+// ============================================
+// SESSION FIX - KEEP USER LOGGED IN
+// ============================================
+
+// Set session cookie parameters for longer session
+ini_set('session.gc_maxlifetime', 604800); // 7 days
+ini_set('session.cookie_lifetime', 604800); // 7 days
+session_set_cookie_params([
+    'lifetime' => 604800, // 7 days in seconds
+    'path' => '/',
+    'domain' => '',
+    'secure' => false,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+// Start session
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
@@ -89,5 +101,25 @@ if (session_status() == PHP_SESSION_NONE) {
 // Get or create session ID for cart
 if (!isset($_SESSION['cart_session_id'])) {
     $_SESSION['cart_session_id'] = session_id() . '_' . time();
+}
+
+// Check if user is logged in and session is still valid
+// If user is logged in, refresh the session to keep it alive
+if (isset($_SESSION['user_id'])) {
+    // Refresh session to keep it alive
+    $_SESSION['last_activity'] = time();
+}
+
+// Optional: Auto-logout after 7 days of inactivity
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 604800)) {
+    // 7 days passed, logout user
+    session_unset();
+    session_destroy();
+    session_start();
+}
+
+// Update last activity time
+if (isset($_SESSION['user_id'])) {
+    $_SESSION['last_activity'] = time();
 }
 ?>

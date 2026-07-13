@@ -4,6 +4,11 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+// Keep session alive if user is logged in
+if (isset($_SESSION['user_id'])) {
+    $_SESSION['last_activity'] = time();
+}
+
 // DO NOT include db_config here - it's already included in the page files
 // The database connection $conn is already available from db_config.php
 
