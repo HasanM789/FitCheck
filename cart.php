@@ -1,5 +1,5 @@
 <?php 
-// Session is already started in db_config.php
+// db_config.php already starts the session and creates $conn
 require_once('db_config.php'); 
 
 $session_id = $_SESSION['cart_session_id'];
