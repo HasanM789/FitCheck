@@ -14,6 +14,7 @@ try {
             username VARCHAR(50) NOT NULL UNIQUE,
             email VARCHAR(100) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
+            is_admin INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -47,25 +48,32 @@ try {
         );
     ");
     
-    // FORCE add products - this will run even if products exist
-    // First, clear existing products (if any)
-    $conn->exec("DELETE FROM products");
+    // Check if products exist
+    $stmt = $conn->query("SELECT COUNT(*) as count FROM products");
+    $count = $stmt->fetch()['count'];
     
-    // Then add fresh products
-    $conn->exec("
-        INSERT INTO products (name, description, price, image_url, category) VALUES
-        ('Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
-        ('Relaxed Fit Denim', 'Affordable and stylish light-wash denim jeans.', 12.00, 'denim_jeans.jpg', 'Bottoms'),
-        ('Oversized Varsity Hoodie', 'Cozy fleece-lined hoodie perfect for college classes.', 15.00, 'hoodie.jpg', 'Outerwear'),
-        ('Casual Summer Dress', 'Lightweight, breathable floral dress for daily wear.', 9.99, 'dress.jpg', 'Dresses')
-    ");
+    // Insert sample products if table is empty
+    if ($count == 0) {
+        $conn->exec("
+            INSERT INTO products (name, description, price, image_url, category) VALUES
+            ('Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
+            ('Relaxed Fit Denim', 'Affordable and stylish light-wash denim jeans.', 12.00, 'denim_jeans.jpg', 'Bottoms'),
+            ('Oversized Varsity Hoodie', 'Cozy fleece-lined hoodie perfect for college classes.', 15.00, 'hoodie.jpg', 'Outerwear'),
+            ('Casual Summer Dress', 'Lightweight, breathable floral dress for daily wear.', 9.99, 'dress.jpg', 'Dresses')
+        ");
+    }
     
 } catch (PDOException $e) {
     die("Database Connection Failed: " . $e->getMessage());
 }
 
-// Start session
+// Start session - FORCE it to work
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
+}
+
+// Initialize cart if not exists (for ALL pages)
+if (!isset($_SESSION['cart'])) {
+    $_SESSION['cart'] = [];
 }
 ?>

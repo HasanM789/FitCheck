@@ -1,10 +1,8 @@
 <?php
-require_once('db_config.php');
+// Start session immediately
+session_start();
 
-// Make sure session is started
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+require_once('db_config.php');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_id'])) {
     $product_id = (int)$_POST['product_id'];

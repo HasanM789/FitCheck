@@ -1,79 +1,17 @@
 <?php 
+// Start session immediately
+session_start();
+
 require_once('db_config.php'); 
 include('header.php'); 
 
-// Initialize cart if not exists
-if (!isset($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
-}
-
-// Handle remove item
-if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
-    $remove_id = (int)$_GET['remove'];
-    if (isset($_SESSION['cart'][$remove_id])) {
-        unset($_SESSION['cart'][$remove_id]);
-        header("Location: cart.php");
-        exit();
-    }
-}
-
-// Handle update quantity
-if (isset($_POST['update_cart']) && isset($_POST['product_id']) && isset($_POST['quantity'])) {
-    $product_id = (int)$_POST['product_id'];
-    $quantity = (int)$_POST['quantity'];
-    
-    error_log("Updating product ID: $product_id, Quantity: $quantity");
-    
-    if ($quantity > 0) {
-        $_SESSION['cart'][$product_id] = $quantity;
-    } else {
-        unset($_SESSION['cart'][$product_id]);
-    }
-    
-    error_log("Session cart: " . print_r($_SESSION['cart'], true));
-    
-    header("Location: cart.php");
-    exit();
-}
-
-// Handle increment (AJAX-style via GET)
-if (isset($_GET['increment']) && is_numeric($_GET['increment'])) {
-    $product_id = (int)$_GET['increment'];
-    if (isset($_SESSION['cart'][$product_id])) {
-        $_SESSION['cart'][$product_id]++;
-    } else {
-        $_SESSION['cart'][$product_id] = 1;
-    }
-    header("Location: cart.php");
-    exit();
-}
-
-// Handle decrement (AJAX-style via GET)
-if (isset($_GET['decrement']) && is_numeric($_GET['decrement'])) {
-    $product_id = (int)$_GET['decrement'];
-    if (isset($_SESSION['cart'][$product_id])) {
-        $_SESSION['cart'][$product_id]--;
-        if ($_SESSION['cart'][$product_id] <= 0) {
-            unset($_SESSION['cart'][$product_id]);
-        }
-    }
-    header("Location: cart.php");
-    exit();
-}
-
-// Clear cart
-if (isset($_GET['clear'])) {
-    $_SESSION['cart'] = [];
-    header("Location: cart.php");
-    exit();
-}
-
-// Calculate total and get cart items
-$total = 0;
+// Get cart items from session
 $cart_items = [];
+$total = 0;
 $cart_count = 0;
 
-if (!empty($_SESSION['cart'])) {
+// Check if cart has items
+if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
     $ids = array_keys($_SESSION['cart']);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
@@ -87,6 +25,50 @@ if (!empty($_SESSION['cart'])) {
         $cart_count += $item['quantity'];
         $cart_items[] = $item;
     }
+}
+
+// Handle remove item
+if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
+    $remove_id = (int)$_GET['remove'];
+    if (isset($_SESSION['cart'][$remove_id])) {
+        unset($_SESSION['cart'][$remove_id]);
+        session_write_close();
+        header("Location: cart.php");
+        exit();
+    }
+}
+
+// Handle increment
+if (isset($_GET['increment']) && is_numeric($_GET['increment'])) {
+    $product_id = (int)$_GET['increment'];
+    if (isset($_SESSION['cart'][$product_id])) {
+        $_SESSION['cart'][$product_id]++;
+        session_write_close();
+        header("Location: cart.php");
+        exit();
+    }
+}
+
+// Handle decrement
+if (isset($_GET['decrement']) && is_numeric($_GET['decrement'])) {
+    $product_id = (int)$_GET['decrement'];
+    if (isset($_SESSION['cart'][$product_id])) {
+        $_SESSION['cart'][$product_id]--;
+        if ($_SESSION['cart'][$product_id] <= 0) {
+            unset($_SESSION['cart'][$product_id]);
+        }
+        session_write_close();
+        header("Location: cart.php");
+        exit();
+    }
+}
+
+// Clear cart
+if (isset($_GET['clear'])) {
+    $_SESSION['cart'] = [];
+    session_write_close();
+    header("Location: cart.php");
+    exit();
 }
 ?>
 
@@ -108,14 +90,9 @@ if (!empty($_SESSION['cart'])) {
             <div class="cart-items">
                 <?php foreach ($cart_items as $item): ?>
                     <div class="cart-item">
-                        <div class="cart-item-image">
-                            <div class="image-placeholder">
-                                <?php echo strtoupper(substr($item['name'], 0, 2)); ?>
-                            </div>
-                        </div>
                         <div class="cart-item-details">
                             <h3><?php echo htmlspecialchars($item['name']); ?></h3>
-                            <p class="item-description"><?php echo htmlspecialchars($item['description']); ?></p>
+                            <p><?php echo htmlspecialchars($item['description']); ?></p>
                             <span class="item-price"><?php echo number_format($item['price'], 2); ?> BD</span>
                         </div>
                         <div class="cart-item-actions">

@@ -67,7 +67,15 @@ if (session_status() == PHP_SESSION_NONE) {
                     <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
                 </svg>
                 <span class="cart-badge <?php echo isset($_SESSION['cart']) && count($_SESSION['cart']) > 0 ? 'has-items' : ''; ?>">
-                    <?php echo isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0; ?>
+                    <?php 
+                    $total_items = 0;
+                    if (isset($_SESSION['cart'])) {
+                        foreach ($_SESSION['cart'] as $qty) {
+                            $total_items += $qty;
+                        }
+                    }
+                    echo $total_items; 
+                    ?>
                 </span>
             </div>
         </a>
