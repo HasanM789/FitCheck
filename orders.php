@@ -10,17 +10,16 @@ include('header.php');
 
 $user_id = $_SESSION['user_id'];
 
-// Fetch all orders for the logged-in user with their total item counts
+// Fetch all orders for the logged-in user with their total item counts - FIXED for SQLite
 $stmt = $conn->prepare("
-    SELECT o.*, COUNT(oi.id) as item_count 
+    SELECT o.*, 
+           (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count 
     FROM orders o
-    LEFT JOIN order_items oi ON o.id = oi.order_id
     WHERE o.user_id = ?
-    GROUP BY o.id
     ORDER BY o.order_date DESC
 ");
 $stmt->execute([$user_id]);
-$orders_result = $stmt;
+$orders_result = $stmt->fetchAll();
 ?>
 
 <div class="account-container">
@@ -64,8 +63,8 @@ $orders_result = $stmt;
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($orders_result && $orders_result->rowCount() > 0): ?>
-                            <?php while($order = $orders_result->fetch()): ?>
+                        <?php if (count($orders_result) > 0): ?>
+                            <?php foreach($orders_result as $order): ?>
                                 <tr>
                                     <td class="order-id">#<?php echo str_pad($order['id'], 6, '0', STR_PAD_LEFT); ?></td>
                                     <td><?php echo date('M d, Y — h:i A', strtotime($order['order_date'])); ?></td>
@@ -75,7 +74,7 @@ $orders_result = $stmt;
                                     </td>
                                     <td><?php echo $order['item_count']; ?></td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="5" class="empty-state">

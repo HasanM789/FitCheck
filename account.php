@@ -24,22 +24,20 @@ $stmt = $conn->prepare("SELECT COALESCE(SUM(total_price), 0) as total FROM order
 $stmt->execute([$user_id]);
 $total_spent = $stmt->fetch()['total'];
 
-// Get recent orders
+// Get recent orders - FIXED for SQLite
 $stmt = $conn->prepare("
-    SELECT o.*, COUNT(oi.id) as item_count 
+    SELECT o.*, 
+           (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count 
     FROM orders o
-    LEFT JOIN order_items oi ON o.id = oi.order_id
     WHERE o.user_id = ?
-    GROUP BY o.id
     ORDER BY o.order_date DESC
     LIMIT 5
 ");
 $stmt->execute([$user_id]);
-$orders_result = $stmt;
+$orders_result = $stmt->fetchAll();
 
 // Debug: Log the number of orders found
-$order_rows = $orders_result->rowCount();
-error_log("Orders found for user $user_id: " . $order_rows);
+error_log("Orders found for user $user_id: " . count($orders_result));
 ?>
 
 <div class="account-container">
@@ -123,8 +121,8 @@ error_log("Orders found for user $user_id: " . $order_rows);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($orders_result && $orders_result->rowCount() > 0): ?>
-                            <?php while($order = $orders_result->fetch()): ?>
+                        <?php if (count($orders_result) > 0): ?>
+                            <?php foreach($orders_result as $order): ?>
                                 <tr>
                                     <td class="order-id">#<?php echo str_pad($order['id'], 6, '0', STR_PAD_LEFT); ?></td>
                                     <td><?php echo date('M d, Y', strtotime($order['order_date'])); ?></td>
@@ -134,7 +132,7 @@ error_log("Orders found for user $user_id: " . $order_rows);
                                     </td>
                                     <td><?php echo $order['item_count']; ?></td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="5" class="empty-state">
