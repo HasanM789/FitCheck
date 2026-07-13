@@ -1,6 +1,11 @@
 <?php
 require_once('db_config.php');
 
+// Make sure session is started
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_id'])) {
     $product_id = (int)$_POST['product_id'];
     
@@ -23,6 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_id'])) {
     } else {
         $_SESSION['cart'][$product_id] = 1;
     }
+    
+    // Force save session
+    session_write_close();
 }
 
 // Redirect back to previous page
