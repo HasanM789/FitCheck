@@ -57,29 +57,31 @@ try {
         );
     ");
     
-    // FORCE PRODUCTS TO HAVE IDs 17-20
-    // First, delete existing products
-    $conn->exec("DELETE FROM products");
+    // Check if products exist with IDs 17-20
+    $stmt = $conn->query("SELECT COUNT(*) as count FROM products WHERE id >= 17 AND id <= 20");
+    $count = $stmt->fetch()['count'];
     
-    // Reset auto-increment
-    $conn->exec("DELETE FROM sqlite_sequence WHERE name='products'");
-    
-    // Insert products with specific IDs 17-20
-    $conn->exec("
-        INSERT INTO products (id, name, description, price, image_url, category) VALUES
-        (17, 'Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
-        (18, 'Relaxed Fit Denim', 'Affordable and stylish light-wash denim jeans.', 12.00, 'denim_jeans.jpg', 'Bottoms'),
-        (19, 'Oversized Varsity Hoodie', 'Cozy fleece-lined hoodie perfect for college classes.', 15.00, 'hoodie.jpg', 'Outerwear'),
-        (20, 'Casual Summer Dress', 'Lightweight, breathable floral dress for daily wear.', 9.99, 'dress.jpg', 'Dresses')
-    ");
-    
-    echo "Products inserted with IDs 17-20!<br>";
+    // If products with IDs 17-20 don't exist, insert them
+    if ($count < 4) {
+        // Clear existing products
+        $conn->exec("DELETE FROM products");
+        // Reset auto-increment
+        $conn->exec("DELETE FROM sqlite_sequence WHERE name='products'");
+        // Insert with specific IDs
+        $conn->exec("
+            INSERT INTO products (id, name, description, price, image_url, category) VALUES
+            (17, 'Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
+            (18, 'Relaxed Fit Denim', 'Affordable and stylish light-wash denim jeans.', 12.00, 'denim_jeans.jpg', 'Bottoms'),
+            (19, 'Oversized Varsity Hoodie', 'Cozy fleece-lined hoodie perfect for college classes.', 15.00, 'hoodie.jpg', 'Outerwear'),
+            (20, 'Casual Summer Dress', 'Lightweight, breathable floral dress for daily wear.', 9.99, 'dress.jpg', 'Dresses')
+        ");
+    }
     
 } catch (PDOException $e) {
     die("Database Connection Failed: " . $e->getMessage());
 }
 
-// Start session
+// Start session - NO OUTPUT BEFORE THIS!
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }

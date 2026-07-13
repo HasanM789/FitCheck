@@ -50,8 +50,6 @@ include('header.php');
                         <h3><?php echo htmlspecialchars($item['name']); ?></h3>
                         <p><?php echo htmlspecialchars($item['description']); ?></p>
                         <div class="product-price"><?php echo number_format($item['price'], 2); ?> BD</div>
-                        <!-- DEBUG: Show product ID (remove after testing) -->
-                        <div style="font-size: 10px; color: #666; margin-top: 5px;">ID: <?php echo $item['id']; ?></div>
                     </div>
                     <form action="cart_action.php" method="POST">
                         <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">

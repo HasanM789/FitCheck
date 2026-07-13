@@ -1,5 +1,5 @@
 <?php
-// Start session first
+// Start session - but ONLY if not already started
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
@@ -78,7 +78,7 @@ require_once('db_config.php');
                             $stmt = $conn->prepare("SELECT SUM(quantity) as total FROM cart WHERE session_id = ?");
                             $stmt->execute([$_SESSION['cart_session_id']]);
                             $result = $stmt->fetch();
-                            $total_items = $result ? $result['total'] : 0;
+                            $total_items = $result ? (int)$result['total'] : 0;
                         } catch (Exception $e) {
                             $total_items = 0;
                         }

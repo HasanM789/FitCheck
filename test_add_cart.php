@@ -6,29 +6,22 @@ echo "<h1>Test Adding to Cart</h1>";
 $session_id = $_SESSION['cart_session_id'];
 echo "Session ID: " . $session_id . "<br>";
 
-// First, show what products exist
+// Show products
 echo "<h2>Available Products:</h2>";
 $products = $conn->query("SELECT id, name FROM products")->fetchAll();
+
 if (count($products) > 0) {
-    echo "<ul>";
+    echo "<table border='1' cellpadding='5'>";
+    echo "<tr><th>ID</th><th>Name</th></tr>";
     foreach ($products as $p) {
-        echo "<li>ID: " . $p['id'] . " - " . $p['name'] . "</li>";
+        echo "<tr><td>" . $p['id'] . "</td><td>" . $p['name'] . "</td></tr>";
     }
-    echo "</ul>";
-} else {
-    echo "❌ No products found!<br>";
-}
-
-// Use the FIRST product ID from the database
-$product_id = 1; // Default to 1, but we'll get the actual first product
-
-if (count($products) > 0) {
-    $product_id = $products[0]['id'];
+    echo "</table>";
+    
+    // Use product ID 17 (Classic White Tee)
+    $product_id = 17;
     echo "<br>Using product ID: " . $product_id . "<br>";
-}
-
-// Try to add the product
-try {
+    
     // Check if product exists
     $stmt = $conn->prepare("SELECT id, name FROM products WHERE id = ?");
     $stmt->execute([$product_id]);
@@ -72,14 +65,12 @@ try {
         }
         
     } else {
-        echo "❌ Product not found!<br>";
+        echo "❌ Product ID $product_id not found!<br>";
     }
-    
-} catch (Exception $e) {
-    echo "❌ Error: " . $e->getMessage() . "<br>";
+} else {
+    echo "❌ No products found!<br>";
 }
 
 echo "<br><a href='cart.php'>Go to Cart</a><br>";
-echo "<a href='test_db_cart.php'>Go to DB Test</a><br>";
-echo "<a href='check_products.php'>Check Products</a>";
+echo "<a href='clear_cart.php'>Clear Cart</a><br>";
 ?>

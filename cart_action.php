@@ -1,9 +1,5 @@
 <?php
-// Start session
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-
+// Session is already started in db_config.php
 require_once('db_config.php');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_id'])) {
@@ -11,9 +7,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['product_id'])) {
     $session_id = $_SESSION['cart_session_id'];
     
     // Verify product exists
-    $stmt = $conn->prepare("SELECT id FROM products WHERE id = ?");
+    $stmt = $conn->prepare("SELECT id, name FROM products WHERE id = ?");
     $stmt->execute([$product_id]);
-    if ($stmt->rowCount() === 0) {
+    $product = $stmt->fetch();
+    
+    if (!$product) {
         header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'catalog.php'));
         exit();
     }
