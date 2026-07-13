@@ -1,19 +1,5 @@
 <?php
-// ============================================
-// HEADER - FIX FOR RENDER
-// ============================================
-
-// Set session cookie parameters BEFORE session start
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'domain' => '',
-    'secure' => false,
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
-
-// Start session if not already started
+// Start session first
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }

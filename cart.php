@@ -1,36 +1,17 @@
-<?php
-// ============================================
-// CART PAGE - FIX FOR RENDER
-// ============================================
-
-// Set session cookie parameters BEFORE session start
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'domain' => '',
-    'secure' => false,
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
-
-// Start session
+<?php 
+// Start session first
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once('db_config.php');
-include('header.php');
-
-// Debug: Log session info (remove after testing)
-error_log("Cart Page - Session ID: " . session_id());
-error_log("Cart Page - Session Cart: " . print_r($_SESSION['cart'], true));
+require_once('db_config.php'); 
+include('header.php'); 
 
 // Handle remove item
 if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
     $remove_id = (int)$_GET['remove'];
     if (isset($_SESSION['cart'][$remove_id])) {
         unset($_SESSION['cart'][$remove_id]);
-        session_write_close();
         header("Location: cart.php");
         exit();
     }
@@ -41,7 +22,6 @@ if (isset($_GET['increment']) && is_numeric($_GET['increment'])) {
     $product_id = (int)$_GET['increment'];
     if (isset($_SESSION['cart'][$product_id])) {
         $_SESSION['cart'][$product_id]++;
-        session_write_close();
         header("Location: cart.php");
         exit();
     }
@@ -55,7 +35,6 @@ if (isset($_GET['decrement']) && is_numeric($_GET['decrement'])) {
         if ($_SESSION['cart'][$product_id] <= 0) {
             unset($_SESSION['cart'][$product_id]);
         }
-        session_write_close();
         header("Location: cart.php");
         exit();
     }
@@ -64,7 +43,6 @@ if (isset($_GET['decrement']) && is_numeric($_GET['decrement'])) {
 // Clear cart
 if (isset($_GET['clear'])) {
     $_SESSION['cart'] = [];
-    session_write_close();
     header("Location: cart.php");
     exit();
 }
