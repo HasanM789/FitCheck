@@ -1,92 +1,148 @@
-<?php
-// Start session - but ONLY if not already started
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
+<?php 
+// Session is already started in db_config.php
+require_once('db_config.php'); 
+
+$session_id = $_SESSION['cart_session_id'];
+
+// Handle remove item - MUST be before ANY HTML output
+if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
+    $product_id = (int)$_GET['remove'];
+    $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ? AND product_id = ?");
+    $stmt->execute([$session_id, $product_id]);
+    header("Location: cart.php");
+    exit();
 }
 
-// Include db_config for cart count
-require_once('db_config.php');
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FitCheck — Premium Apparel</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+// Handle increment - MUST be before ANY HTML output
+if (isset($_GET['increment']) && is_numeric($_GET['increment'])) {
+    $product_id = (int)$_GET['increment'];
+    $stmt = $conn->prepare("UPDATE cart SET quantity = quantity + 1 WHERE session_id = ? AND product_id = ?");
+    $stmt->execute([$session_id, $product_id]);
+    header("Location: cart.php");
+    exit();
+}
 
-<header class="fc-navbar-main">
-    <a href="index.php" class="fc-logo-container">
-        <svg class="fc-logo-svg" viewBox="0 0 100 100" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
-            <rect class="fc-box" x="5" y="5" width="90" height="90" fill="#dc3545"/>
-            <polyline class="fc-check" points="20,50 40,70 80,30" fill="none" stroke="white" stroke-width="12" stroke-linecap="square"/>
-        </svg>
-        <div class="fc-logo-text-group">
-            <span class="fc-logo-main">Fit Check.</span>
-            <span class="fc-logo-sub">YOUR DAILY ESSENTIALS.</span>
-        </div>
-    </a>
+// Handle decrement - MUST be before ANY HTML output
+if (isset($_GET['decrement']) && is_numeric($_GET['decrement'])) {
+    $product_id = (int)$_GET['decrement'];
+    $stmt = $conn->prepare("UPDATE cart SET quantity = quantity - 1 WHERE session_id = ? AND product_id = ?");
+    $stmt->execute([$session_id, $product_id]);
     
-    <nav class="fc-nav-links-group">
-        <a href="index.php" class="fc-nav-item">Home</a>
-        <a href="catalog.php" class="fc-nav-item">Catalog</a>
-        
-        <?php if (isset($_SESSION['user_id'])): ?>
-            <div class="fc-account-wrapper">
-                <a href="account.php" class="fc-nav-item">Account</a>
-                <div class="fc-account-dropdown">
-                    <div class="fc-dropdown-user">
-                        <span class="dropdown-username"><?php echo htmlspecialchars($_SESSION['username']); ?></span>
-                    </div>
-                    <div class="fc-dropdown-divider"></div>
-                    <a href="account.php" class="fc-dropdown-item">Dashboard</a>
-                    <a href="orders.php" class="fc-dropdown-item">My Orders</a>
-                    <a href="profile.php" class="fc-dropdown-item">Profile Settings</a>
-                    <div class="fc-dropdown-divider"></div>
-                    <a href="logout.php" class="fc-dropdown-item fc-dropdown-logout">Logout</a>
-                </div>
-            </div>
-        <?php else: ?>
-            <div class="fc-account-wrapper">
-                <a href="#" class="fc-nav-item">Account</a>
-                <div class="fc-account-dropdown">
-                    <div class="fc-dropdown-header">Welcome to FitCheck</div>
-                    <div class="fc-dropdown-actions">
-                        <a href="login.php" class="fc-btn-auth fc-btn-signin">Sign In</a>
-                        <a href="register.php" class="fc-btn-auth fc-btn-join">Join</a>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
+    // Check if quantity is 0 or less, then delete
+    $stmt = $conn->prepare("SELECT quantity FROM cart WHERE session_id = ? AND product_id = ?");
+    $stmt->execute([$session_id, $product_id]);
+    $result = $stmt->fetch();
+    if ($result && $result['quantity'] <= 0) {
+        $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ? AND product_id = ?");
+        $stmt->execute([$session_id, $product_id]);
+    }
+    
+    header("Location: cart.php");
+    exit();
+}
 
-        <!-- Cart Button - Icon Only -->
-        <a href="cart.php" class="fc-nav-item fc-nav-cart-icon">
-            <div class="cart-icon-wrapper">
-                <svg class="cart-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="9" cy="21" r="1"/>
-                    <circle cx="20" cy="21" r="1"/>
-                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                </svg>
-                <span class="cart-badge">
-                    <?php 
-                    // Get cart count from database
-                    $total_items = 0;
-                    if (isset($_SESSION['cart_session_id'])) {
-                        try {
-                            $stmt = $conn->prepare("SELECT SUM(quantity) as total FROM cart WHERE session_id = ?");
-                            $stmt->execute([$_SESSION['cart_session_id']]);
-                            $result = $stmt->fetch();
-                            $total_items = $result ? (int)$result['total'] : 0;
-                        } catch (Exception $e) {
-                            $total_items = 0;
-                        }
-                    }
-                    echo $total_items; 
-                    ?>
-                </span>
+// Clear cart - MUST be before ANY HTML output
+if (isset($_GET['clear'])) {
+    $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ?");
+    $stmt->execute([$session_id]);
+    header("Location: cart.php");
+    exit();
+}
+
+// Now include header AFTER all redirects are handled
+include('header.php');
+
+// Get cart items from database
+$cart_items = [];
+$total = 0;
+$cart_count = 0;
+
+$stmt = $conn->prepare("
+    SELECT c.product_id, c.quantity, p.name, p.description, p.price 
+    FROM cart c
+    JOIN products p ON c.product_id = p.id
+    WHERE c.session_id = ?
+");
+$stmt->execute([$session_id]);
+$result = $stmt;
+
+while ($item = $result->fetch()) {
+    $item['subtotal'] = $item['price'] * $item['quantity'];
+    $total += $item['subtotal'];
+    $cart_count += $item['quantity'];
+    $cart_items[] = $item;
+}
+?>
+
+<div class="cart-page">
+    <div class="cart-header">
+        <h1>Shopping Cart</h1>
+        <span class="cart-count"><?php echo $cart_count; ?> items</span>
+    </div>
+
+    <?php if (empty($cart_items)): ?>
+        <div class="empty-cart">
+            <div class="empty-cart-icon">🛒</div>
+            <h2>Your cart is empty</h2>
+            <p>Looks like you haven't added any items to your cart yet.</p>
+            <a href="catalog.php" class="continue-shopping-btn">Continue Shopping</a>
+        </div>
+    <?php else: ?>
+        <div class="cart-content">
+            <div class="cart-items">
+                <?php foreach ($cart_items as $item): ?>
+                    <div class="cart-item">
+                        <div class="cart-item-image">
+                            <div class="image-placeholder">
+                                <?php echo strtoupper(substr($item['name'], 0, 2)); ?>
+                            </div>
+                        </div>
+                        <div class="cart-item-details">
+                            <h3><?php echo htmlspecialchars($item['name']); ?></h3>
+                            <p class="item-description"><?php echo htmlspecialchars($item['description']); ?></p>
+                            <span class="item-price"><?php echo number_format($item['price'], 2); ?> BD</span>
+                        </div>
+                        <div class="cart-item-actions">
+                            <div class="quantity-control">
+                                <a href="cart.php?decrement=<?php echo $item['product_id']; ?>" class="qty-btn">−</a>
+                                <span class="qty-display"><?php echo $item['quantity']; ?></span>
+                                <a href="cart.php?increment=<?php echo $item['product_id']; ?>" class="qty-btn">+</a>
+                            </div>
+                            <a href="cart.php?remove=<?php echo $item['product_id']; ?>" class="remove-btn">Remove</a>
+                        </div>
+                        <div class="cart-item-total">
+                            <span class="subtotal-label">SUBTOTAL</span>
+                            <span class="subtotal-amount"><?php echo number_format($item['subtotal'], 2); ?> BD</span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             </div>
-        </a>
-    </nav>
-</header>
+
+            <div class="cart-summary">
+                <h3>Order Summary</h3>
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span><?php echo number_format($total, 2); ?> BD</span>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping</span>
+                    <span class="shipping-free">Free</span>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span class="total-amount"><?php echo number_format($total, 2); ?> BD</span>
+                </div>
+                <div class="cart-actions">
+                    <a href="catalog.php" class="continue-shopping">← Continue Shopping</a>
+                    <div class="action-buttons">
+                        <a href="cart.php?clear=1" class="clear-cart-btn" onclick="return confirm('Clear all items from cart?');">Clear Cart</a>
+                        <a href="checkout.php" class="checkout-btn">Proceed to Checkout →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+</div>
+
+<?php include('footer.php'); ?>

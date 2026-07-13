@@ -1,11 +1,10 @@
 <?php 
 // Session is already started in db_config.php
 require_once('db_config.php'); 
-include('header.php'); 
 
 $session_id = $_SESSION['cart_session_id'];
 
-// Handle remove item
+// Handle remove item - MUST be before ANY HTML output
 if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
     $product_id = (int)$_GET['remove'];
     $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ? AND product_id = ?");
@@ -14,7 +13,7 @@ if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
     exit();
 }
 
-// Handle increment
+// Handle increment - MUST be before ANY HTML output
 if (isset($_GET['increment']) && is_numeric($_GET['increment'])) {
     $product_id = (int)$_GET['increment'];
     $stmt = $conn->prepare("UPDATE cart SET quantity = quantity + 1 WHERE session_id = ? AND product_id = ?");
@@ -23,7 +22,7 @@ if (isset($_GET['increment']) && is_numeric($_GET['increment'])) {
     exit();
 }
 
-// Handle decrement
+// Handle decrement - MUST be before ANY HTML output
 if (isset($_GET['decrement']) && is_numeric($_GET['decrement'])) {
     $product_id = (int)$_GET['decrement'];
     $stmt = $conn->prepare("UPDATE cart SET quantity = quantity - 1 WHERE session_id = ? AND product_id = ?");
@@ -42,13 +41,16 @@ if (isset($_GET['decrement']) && is_numeric($_GET['decrement'])) {
     exit();
 }
 
-// Clear cart
+// Clear cart - MUST be before ANY HTML output
 if (isset($_GET['clear'])) {
     $stmt = $conn->prepare("DELETE FROM cart WHERE session_id = ?");
     $stmt->execute([$session_id]);
     header("Location: cart.php");
     exit();
 }
+
+// Now include header AFTER all redirects are handled
+include('header.php');
 
 // Get cart items from database
 $cart_items = [];
