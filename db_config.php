@@ -47,19 +47,18 @@ try {
         );
     ");
     
-    // Add sample products if table is empty
-    $stmt = $conn->query("SELECT COUNT(*) as count FROM products");
-    $count = $stmt->fetch()['count'];
+    // FORCE add products - this will run even if products exist
+    // First, clear existing products (if any)
+    $conn->exec("DELETE FROM products");
     
-    if ($count == 0) {
-        $conn->exec("
-            INSERT INTO products (name, description, price, image_url, category) VALUES
-            ('Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
-            ('Relaxed Fit Denim', 'Affordable and stylish light-wash denim jeans.', 12.00, 'denim_jeans.jpg', 'Bottoms'),
-            ('Oversized Varsity Hoodie', 'Cozy fleece-lined hoodie perfect for college classes.', 15.00, 'hoodie.jpg', 'Outerwear'),
-            ('Casual Summer Dress', 'Lightweight, breathable floral dress for daily wear.', 9.99, 'dress.jpg', 'Dresses')
-        ");
-    }
+    // Then add fresh products
+    $conn->exec("
+        INSERT INTO products (name, description, price, image_url, category) VALUES
+        ('Classic White Tee', 'Comfortable 100% cotton everyday essential t-shirt.', 4.50, 'white_tee.jpg', 'Tops'),
+        ('Relaxed Fit Denim', 'Affordable and stylish light-wash denim jeans.', 12.00, 'denim_jeans.jpg', 'Bottoms'),
+        ('Oversized Varsity Hoodie', 'Cozy fleece-lined hoodie perfect for college classes.', 15.00, 'hoodie.jpg', 'Outerwear'),
+        ('Casual Summer Dress', 'Lightweight, breathable floral dress for daily wear.', 9.99, 'dress.jpg', 'Dresses')
+    ");
     
 } catch (PDOException $e) {
     die("Database Connection Failed: " . $e->getMessage());
